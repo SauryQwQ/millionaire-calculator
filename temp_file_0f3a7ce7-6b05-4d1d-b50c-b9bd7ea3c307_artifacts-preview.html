@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我要成为百万富翁</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .money-display {
+            font-size: 2.5rem;
+            font-family: 'Arial', sans-serif;
+            transition: all 0.3s;
+        }
+        .big-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .pulse-effect {
+            animation: pulse 0.5s;
+        }
+        @keyframes pulse {
+            50% { transform: scale(1.05); }
+        }
+        .decimal-6 {
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-md p-6 w-full max-w-sm">
+        <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">我要成为百万富翁</h1>
+        
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">日薪（元）</label>
+            <input type="number" id="dailySalary" value="300"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        
+        <div class="bg-blue-50 rounded-lg p-4 mb-4">
+            <p class="text-sm text-gray-600">每秒收入</p>
+            <div id="perSecond" class="money-display text-blue-600 font-mono decimal-6">0.000000</div>
+        </div>
+        
+        <div class="bg-green-50 rounded-lg p-4 mb-4">
+            <p class="text-sm text-gray-600">累计收入</p>
+            <div id="totalEarned" class="money-display text-green-600 font-mono decimal-6">0.000000 元</div>
+            <p id="timeCounter" class="text-xs text-gray-500 mt-2">已运行: 0秒</p>
+        </div>
+        
+        <div class="bg-purple-50 rounded-lg p-4">
+            <p class="text-sm text-gray-600">距离赚到100万还要</p>
+            <div id="targetYears" class="big-number text-purple-600 font-mono">0 年</div>
+            <p class="text-xs text-gray-500 mt-2">按当前日薪计算（每年工作300天）</p>
+        </div>
+    </div>
+
+    <script>
+        // 获取DOM元素
+        const dailySalaryInput = document.getElementById('dailySalary');
+        const perSecondDisplay = document.getElementById('perSecond');
+        const totalEarnedDisplay = document.getElementById('totalEarned');
+        const timeCounterDisplay = document.getElementById('timeCounter');
+        const targetYearsDisplay = document.getElementById('targetYears');
+        
+        // 常量
+        const MILLION = 1000000;
+        const WORK_DAYS_PER_YEAR = 300; // 每年工作天数
+        
+        // 变量定义
+        let earningPerSecond = 0;
+        let totalEarned = 0;
+        let elapsedTime = 0;
+        let animationId = null;
+        let lastTimestamp = 0;
+        let yearsToMillion = 0;
+        
+        // 计算方法
+        function calculate() {
+            const dailySalary = parseFloat(dailySalaryInput.value) || 0;
+            
+            // 计算每秒收入 (按每天8小时)
+            const workingSecondsPerDay = 8 * 60 * 60;
+            earningPerSecond = dailySalary / workingSecondsPerDay;
+            perSecondDisplay.textContent = earningPerSecond.toFixed(6).replace(/(\.0+|0+)$/, '');
+            
+            // 计算到100万所需年数
+            updateMillionTarget();
+            
+            // 重置累计
+            resetAccumulator();
+        }
+        
+        // 更新百万目标
+        function updateMillionTarget() {
+            const dailySalary = parseFloat(dailySalaryInput.value) || 0;
+            const remainingToMillion = MILLION - totalEarned;
+            
+            if(dailySalary > 0) {
+                const daysNeeded = remainingToMillion / dailySalary;
+                yearsToMillion = daysNeeded / WORK_DAYS_PER_YEAR;
+                
+                if(yearsToMillion <= 0) {
+                    targetYearsDisplay.textContent = "已达成!";
+                    targetYearsDisplay.className = "big-number text-green-600 font-mono";
+                } else if(yearsToMillion < 0.1) {
+                    // 小于0.1年时显示天数
+                    const days = Math.ceil(daysNeeded);
+                    targetYearsDisplay.textContent = days + " 天";
+                    targetYearsDisplay.className = "big-number text-purple-600 font-mono";
+                } else {
+                    // 显示年数，保留2位小数
+                    targetYearsDisplay.textContent = yearsToMillion.toFixed(2) + " 年";
+                    targetYearsDisplay.className = "big-number text-purple-600 font-mono";
+                }
+            } else {
+                targetYearsDisplay.textContent = "∞";
+                targetYearsDisplay.className = "big-number text-gray-600 font-mono";
+            }
+        }
+        
+        // 重置累计器
+        function resetAccumulator() {
+            cancelAnimationFrame(animationId);
+            totalEarned = 0;
+            elapsedTime = 0;
+            lastTimestamp = 0;
+            
+            updateDisplay();
+            startAccumulator();
+        }
+        
+        // 开始累计
+        function startAccumulator() {
+            if (earningPerSecond <= 0) return;
+            
+            lastTimestamp = performance.now();
+            animationId = requestAnimationFrame(updateAccumulator);
+        }
+        
+        // 更新累计收入
+        function updateAccumulator(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            
+            const deltaTime = (timestamp - lastTimestamp) / 1000; // 转换为秒
+            lastTimestamp = timestamp;
+            
+            totalEarned += earningPerSecond * deltaTime;
+            elapsedTime += deltaTime;
+            
+            updateDisplay();
+            animationId = requestAnimationFrame(updateAccumulator);
+        }
+        
+        // 更新显示
+        function updateDisplay() {
+            totalEarnedDisplay.textContent = totalEarned.toFixed(6) + ' 元';
+            timeCounterDisplay.textContent = `已运行: ${Math.floor(elapsedTime)}秒`;
+            
+            // 更新百万目标
+            updateMillionTarget();
+            
+            // 添加动画效果
+            totalEarnedDisplay.classList.add('pulse-effect');
+            setTimeout(() => totalEarnedDisplay.classList.remove('pulse-effect'), 300);
+        }
+        
+        // 事件监听
+        dailySalaryInput.addEventListener('input', calculate);
+        
+        // 初始化
+        calculate();
+    </script>
+</body>
+</html>
